@@ -2,13 +2,28 @@ import http from "http";
 import { WebSocketServer } from "ws";
 import type { WebSocket } from "ws";
 import fetch, { Response as FetchResponse } from "node-fetch";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load Video.js assets locally
+const videoJsCss = fs.readFileSync(
+    path.join(__dirname, "node_modules", "video.js", "dist", "video-js.css"),
+    "utf8"
+);
+const videoJsJs = fs.readFileSync(
+    path.join(__dirname, "node_modules", "video.js", "dist", "video.js"),
+    "utf8"
+);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8081;
 const ANTPP_ENDPOINT = process.env.ANTPP_ENDPOINT || "http://localhost:18888";
-const DWEB_ENDPOINT =
-    process.env.DWEB_ENDPOINT_ENDPOINT || "http://localhost:5537";
+const CINEMA_MODE = process.env.CINEMA_MODE === "true";
 
-// this allows paths like: abcdef...64/filename.png or deeper (e.g. /images/file.png)
+// Valid XOR name path regex
 const PATH_REGEX = /^[a-f0-9]{64}(\/[\w\-._~:@!$&'()*+,;=]+)*\/?$/i;
 
 type FetchJob = { address: string; ws: WebSocket };
@@ -17,25 +32,24 @@ let activeJobs = 0;
 const MAX_CONCURRENT = 5;
 const TIMEOUT_MS = 60000;
 
-// create HTTP server
+// Create HTTP server
 const anttpServer = http.createServer(async (req, res) => {
-    const path = req.url?.slice(1); // remove leading "/"
+    const pathReq = req.url?.slice(1); // remove leading "/"
 
-    // If root, respond with default message
-    if (!path) {
+    if (!pathReq) {
         res.writeHead(200, { "Content-Type": "text/plain" });
         return res.end("anttp server is live");
     }
 
-    // Validate path is a valid XOR name + optional deeper path + optional trailing slash
-    if (!PATH_REGEX.test(path)) {
+    if (!PATH_REGEX.test(pathReq)) {
         res.writeHead(400, { "Content-Type": "text/plain" });
         return res.end("Invalid XOR name");
     }
 
     try {
-        // Proxy GET request to Rust antTP server on port 18888
-        const cleanedPath = path.startsWith("/") ? path.slice(1) : path;
+        const cleanedPath = pathReq.startsWith("/")
+            ? pathReq.slice(1)
+            : pathReq;
         const antResp = await fetch(`${ANTPP_ENDPOINT}/${cleanedPath}`, {
             redirect: "follow",
         });
@@ -45,12 +59,46 @@ const anttpServer = http.createServer(async (req, res) => {
             return res.end(`Error fetching XOR content: ${antResp.statusText}`);
         }
 
+        const mimeType = antResp.headers.get("content-type") || "";
+
+        // Cinema mode for videos
+        if (CINEMA_MODE && mimeType.startsWith("video/")) {
+            res.writeHead(200, { "Content-Type": "text/html" });
+
+            const videoUrl = `${ANTPP_ENDPOINT}/${cleanedPath}`;
+            return res.end(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cinema Mode</title>
+<style>
+${videoJsCss}
+body { margin: 0; background-color: black; display: flex; align-items: center; justify-content: center; height: 100vh; }
+</style>
+</head>
+<body>
+<video id="player" class="video-js vjs-big-play-centered" controls preload="auto" style="width:90%; height:auto;">
+    <source src="${videoUrl}" type="${mimeType}">
+</video>
+<script>
+${videoJsJs}
+var player = videojs('player', {
+    autoplay: false,
+    controls: true,
+    preload: 'auto'
+});
+</script>
+</body>
+</html>
+            `);
+        }
+
         if (!antResp.body) {
             res.writeHead(500, { "Content-Type": "text/plain" });
             return res.end("Error: Empty response body");
         }
 
-        // Forward status code and content-type header from Rust server
         const headers = Object.fromEntries(antResp.headers.entries());
         res.writeHead(antResp.status, headers);
         antResp.body.pipe(res);
@@ -60,14 +108,12 @@ const anttpServer = http.createServer(async (req, res) => {
     }
 });
 
-// start server
-anttpServer.headersTimeout = 120000; // 120 seconds (2 minutes)
+anttpServer.headersTimeout = 120000;
 
-// attach WebSocket server
+// Attach WebSocket server
 const wss = new WebSocketServer({ server: anttpServer });
 console.log(`✅ WebSocket server initialized.`);
 
-// handle new connections
 wss.on("connection", (ws, req) => {
     const ip = req.socket.remoteAddress || "unknown";
     console.log(`👤 Client connected from ${ip}`);
@@ -76,7 +122,6 @@ wss.on("connection", (ws, req) => {
         const address = message.toString().trim();
         console.log(`📩 Message received: ${address}`);
 
-        // Basic validation: regex + no ".."
         if (!PATH_REGEX.test(address) || address.includes("..")) {
             return ws.send("invalid address format");
         }
@@ -94,7 +139,7 @@ anttpServer.listen(PORT, () => {
     console.log(`✅ HTTP + WebSocket server running on port ${PORT}`);
 });
 
-// main job processing loop
+// Job queue processing
 function processQueue() {
     if (activeJobs >= MAX_CONCURRENT || queue.length === 0) return;
 
@@ -110,23 +155,17 @@ function processQueue() {
             const mimeType =
                 res.headers.get("content-type") || "application/octet-stream";
 
-            console.log("mimeType: ", mimeType);
-            console.log("res: ", res);
-
             const buffer = await res.arrayBuffer();
 
-            // prepare JSON metadata
             const metadata = JSON.stringify({
                 mimeType,
                 xorname: job.address,
             });
             const metadataBuffer = Buffer.from(metadata, "utf-8");
 
-            // 4-byte header for metadata length
             const headerBuffer = Buffer.alloc(4);
             headerBuffer.writeUInt32BE(metadataBuffer.length, 0);
 
-            // final payload: [header][metadata][binary]
             const combined = Buffer.concat([
                 headerBuffer,
                 metadataBuffer,
@@ -145,7 +184,7 @@ function processQueue() {
         });
 }
 
-// fetch helper with timeout
+// Fetch with timeout helper
 async function fetchWithTimeout(
     url: string,
     timeoutMs: number
