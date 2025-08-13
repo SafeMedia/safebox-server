@@ -11,7 +11,7 @@ https://anttp.antsnest.site/gindex
 ## 🖥️ Prerequisites
 
 - A VPS or cloud instance (Ubuntu 24.04 recommended)
-- A domain or subdomain pointing to your server's IP
+- A domain pointing to your server's IP
 - Basic familiarity with the terminal
 
 ---
