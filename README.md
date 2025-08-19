@@ -256,3 +256,15 @@ docker system prune -a --volumes -f
 ## ✅ You're Done!
 
 Your SafeBox server should now be up and running, accessible via your sub-domains and ready to serve content securely and efficiently.
+
+
+---
+
+## Other Products
+
+Make/find an issue & create a PR - All contributions appreciated!
+
+https://github.com/SafeMedia/safebox-client
+
+https://github.com/SafeMedia/autonomi-chrome-extension
+
