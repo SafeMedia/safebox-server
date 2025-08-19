@@ -229,8 +229,11 @@ then
 ```bash
 docker compose -f /home/git/safebox-server/docker-compose.yml up --build -d
 ```
+If it does not update you can do a hard reset.
 
-Should it not update you can do a hard reset:
+warning - only do so if you are only running safebox server.
+
+If you are running other services via docker, then you will need to manually kill the individual safebox processes.
 
 
 delete all docker images (warning)
@@ -239,13 +242,13 @@ delete all docker images (warning)
 docker kill $(docker ps -q)
 ```
 
-Remove all docker images
+Remove all docker images (warning)
 
 ```bash
 docker rmi -f $(docker images -aq)
 ```
 
-Prune all docker volumes
+Prune all docker volumes (warning)
 
 ```bash
 docker system prune -a --volumes -f
