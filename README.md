@@ -8,6 +8,14 @@ https://anttp.antsnest.site/gindex
 
 ---
 
+## Other Products
+
+https://github.com/SafeMedia/autonomi-chrome-extension
+
+https://github.com/SafeMedia/safebox-client
+
+---
+
 ## 🖥️ Prerequisites
 
 - A VPS or cloud instance (Ubuntu 24.04 recommended)
