@@ -1,22 +1,24 @@
-version: "3.8"
-
 services:
-    anttp_server:
-        build:
-            context: .
-            dockerfile: anttp/Dockerfile
-        container_name: anttp_server
+    # Rust AntTP official image
+    anttp_rust:
+        image: traktion/anttp:latest
+        container_name: anttp_rust
         expose:
-            - "8081" # Node.js WebSocket server port
-            - "18888" # Rust antTP HTTP server port
+            - "8080"
         restart: unless-stopped
 
-    dweb_server:
+    # Your custom Node.js WebSocket proxy
+    anttp_proxy:
         build:
-            context: ./dweb
-        container_name: dweb_server
+            context: .
+            dockerfile: Dockerfile # (place this new Dockerfile at project root)
+        container_name: anttp_proxy
+        environment:
+            - ANTPP_ENDPOINT=http://anttp_rust:8080
         expose:
-            - "5537" # Rust DWEB HTTP server port
+            - "8081"
+        depends_on:
+            - anttp_rust
         restart: unless-stopped
 
     caddy:
@@ -27,8 +29,8 @@ services:
             - "80:80"
             - "443:443"
         depends_on:
-            - anttp_server
-            - dweb_server
+            - anttp_rust
+            - anttp_proxy
         volumes:
             - ./Caddyfile:/etc/caddy/Caddyfile
             - caddy_data:/data

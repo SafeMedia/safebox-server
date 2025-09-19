@@ -1,38 +1,23 @@
 ws.mydomain.com {
-
-    # Proxy WebSocket traffic separately
-    reverse_proxy anttp_server:8081
+    # Proxy WebSocket traffic to your Node.js proxy
+    reverse_proxy anttp_proxy:8081
 
     encode gzip
 
     log {
         output stdout
     }
-
 }
 
 anttp.mydomain.com {
-
-    # Proxy all other traffic to antTP Rust server
-    reverse_proxy anttp_server:18888
-
-    encode gzip
-
-    log {
-        output stdout
-    }
-
-}
-
-dweb.mydomain.com {
-
-    # Proxy all other traffic to DWEB Rust server
-    reverse_proxy  dweb_server:5537
+    # Proxy all other traffic to AntTP Rust server
+    reverse_proxy anttp_rust:8080
 
     encode gzip
 
     log {
         output stdout
     }
-
 }
+
+

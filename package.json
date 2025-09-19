@@ -1,20 +1,21 @@
 {
     "name": "safebox-server",
-    "version": "1.0.1",
-    "description": "Server for Autonomi",
+    "version": "1.0.0",
+    "description": "WebSocket + HTTP proxy for Autonomi",
     "type": "module",
     "main": "dist/server.js",
     "scripts": {
         "build": "tsc",
-        "start": "node dist/server.js"
+        "start": "node dist/server.js",
+        "dev": "ts-node src/server.ts"
     },
     "dependencies": {
         "node-fetch": "^3.3.2",
-        "ts-node": "^10.0.0",
         "ws": "^8.0.0"
     },
     "devDependencies": {
         "@types/ws": "^8.5.5",
-        "typescript": "^5.8.3"
+        "typescript": "^5.8.3",
+        "ts-node": "^10.0.0"
     }
 }
