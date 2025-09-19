@@ -2,7 +2,9 @@ version: "3.8"
 
 services:
     anttp_server:
-        image: traktion/anttp:latest
+        build:
+            context: .
+            dockerfile: anttp/Dockerfile
         container_name: anttp_server
         expose:
             - "8081" # Node.js WebSocket server port
