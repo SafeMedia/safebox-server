@@ -22,20 +22,28 @@ services:
         restart: unless-stopped
 
     caddy:
-        image: caddy:2-alpine
-        container_name: caddy_reverse_proxy
+        image: ghcr.io/caddybuilds/caddy-cloudflare:latest
+        container_name: caddy_cloudflare
         restart: unless-stopped
+        cap_add:
+          - NET_ADMIN
         ports:
             - "80:80"
             - "443:443"
+            - "443:443/udp"
         depends_on:
             - anttp_rust
             - anttp_proxy
         volumes:
-            - ./Caddyfile:/etc/caddy/Caddyfile
-            - caddy_data:/data
-            - caddy_config:/config
+          - $PWD/Caddyfile:/etc/caddy/Caddyfile
+          - $PWD/site:/srv
+          - caddy_data:/data
+          - caddy_config:/config
+        environment:
+          - CLOUDFLARE_API_TOKEN=
+           
 
 volumes:
     caddy_data:
+      external: true
     caddy_config:
