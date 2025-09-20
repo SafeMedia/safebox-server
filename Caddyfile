@@ -1,4 +1,9 @@
-ws.mydomain.com {
+{
+  # Set the ACME DNS challenge provider to use Cloudflare for all sites
+  acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+}
+
+ws.antsnest.site {
     # Proxy WebSocket traffic to your Node.js proxy
     reverse_proxy anttp_proxy:8081
 
@@ -9,7 +14,7 @@ ws.mydomain.com {
     }
 }
 
-anttp.mydomain.com {
+anttp.antsnest.site {
     # Proxy all other traffic to AntTP Rust server
     reverse_proxy anttp_rust:8080
 
